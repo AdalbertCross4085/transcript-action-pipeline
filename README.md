@@ -1,12 +1,12 @@
 # Turning a media transcript into the next three actions
 
-Got a meeting recording that already goes through a transcriber? I built a tiny CLI for side projects. The transcriber writes UTF-8 text chunks to a file. This script feeds them to Infrai through its OpenAI-compatible `base_url`. It prints the actions and keeps each request small enough for streaming.
+I built this small command-line pipeline for side projects where a meeting recording already passes through a media transcriber. The transcriber writes text chunks to a UTF-8 file; this script feeds those chunks to Infrai through its OpenAI-compatible `base_url`, then prints the actions while keeping each request small enough to process as the text arrives.
 
-Here's the boundary I drew: audio capture and speech recognition stay in the media layer. This repo owns the part I needed to ship fast: deciding what to do with each new transcript piece. No second service hidden inside.
+The useful boundary is deliberate: audio capture and speech recognition stay in the media layer, while this repository owns the part I needed to ship quickly: deciding what someone should do with each new piece of transcript. That makes the example runnable without hiding a second service in the repository.
 
 ## I shipped the first pass this way
 
-First version is one Python script and one dependency. Use the sample transcript to try it locally in a minute. Then replace that file with output from your recorder pipeline. The script reads `INFRAI_API_KEY` from the environment and sends `model="auto"` through the same OpenAI Python client I already use.
+The whole run is a Python script and one dependency. I used a sample transcript so the workflow can be tried locally in a minute, then replaced that file with the text output from my recorder pipeline. The script reads `INFRAI_API_KEY` from the environment and sends `model="auto"` through the same OpenAI Python client I already use elsewhere.
 
 ```bash
 python3 -m venv .venv
@@ -16,7 +16,7 @@ export INFRAI_API_KEY="your-key"
 python media_action_pipeline.py sample_transcript.txt
 ```
 
-Expected output is a short block per chunk, like:
+The expected output is a short block for each chunk, such as:
 
 ```text
 [chunk 1/1]
@@ -27,15 +27,15 @@ Team: review the error budget next Tuesday
 
 ## What happens per chunk
 
-`read_transcript` splits incoming text into bounded pieces. `act_on_chunk` sends each piece to `chat.completions.create` with a narrow instruction and prints the returned action text immediately. Handy for a webhook or queue worker later: swap the file reader for your stream adapter, keep the action call unchanged.
+`read_transcript` splits incoming text into bounded pieces. `act_on_chunk` sends each piece to `chat.completions.create` with a narrow instruction and prints the returned action text immediately. This is handy for a webhook or queue worker later: replace the file reader with your stream adapter and keep the action call unchanged.
 
-The request uses one `INFRAI_API_KEY` and one OpenAI-compatible endpoint. That keeps app code small. Same pattern sits behind a web route, a cron job, or a local command. When the service asks to slow down, the retry loop honors `Retry-After` and otherwise uses exponential backoff.
+The request uses one `INFRAI_API_KEY` and one OpenAI-compatible endpoint, so the application code stays small while the same pattern can sit behind a web route, a cron job, or a local command. When the service asks the client to slow down, the retry loop honors `Retry-After` and otherwise uses exponential backoff.
 
 ## Adapting it to real media
 
-Point your existing audio pipeline at this. Append finalized transcript text to a file or pass it via a temp UTF-8 artifact. Keep chunk size matched to your latency want. For a production worker, persist the last processed chunk beside your queue acknowledgement so a restart resumes at a known boundary.
+Have your existing audio pipeline append finalized transcript text to a file or pass it to this process through a temporary UTF-8 artifact. Keep chunks at a size that matches the latency you want. For a production worker, persist the last processed chunk beside your queue acknowledgement so a process restart resumes at a known boundary.
 
-This repository does not capture audio or choose a speech-recognition engine. It demonstrates the post-transcription action step. That's the part I wanted to copy into a side project without an app framework.
+This repository does not capture audio or choose a speech-recognition engine. It demonstrates the post-transcription action step, which is the part I wanted to copy into a side project without bringing in an application framework.
 
 ## License
 
@@ -43,7 +43,7 @@ MIT
 
 ## Going to production: Transcript Action Pipeline
 
-The code stays simple on purpose. Here's what to set up before going live. The details below apply to Transcript Action Pipeline.
+The code stays simple on purpose — here's what to set up before going live: The details below apply to Transcript Action Pipeline.
 
 **Account & key**
 
